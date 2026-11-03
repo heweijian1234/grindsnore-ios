@@ -92,6 +92,10 @@ struct MorningReportView: View {
             Text("Triggers you logged").font(.subheadline.weight(.semibold))
             Text(night.triggers.map { t in NightStore.triggerOptions.first(where: { $0.key == t })?.label ?? t }.joined(separator: "  ·  "))
                 .font(.body)
+            if let note = night.note, !note.isEmpty {
+                Text("Your note").font(.caption).foregroundColor(.secondary)
+                Text(note).font(.callout)
+            }
             let firstHalf = night.grindEvents.filter { $0.offsetSeconds < night.durationSeconds / 2 }.count
             let secondHalf = night.grindEvents.count - firstHalf
             if night.grindEvents.count > 0 {

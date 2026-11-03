@@ -14,6 +14,7 @@ struct NightRecord: Codable, Identifiable {
     var headache: Int?         // 0-3
     var sleepFeel: Int?        // 0-3
     var triggers: [String]     // coffee/alcohol/stress/lateMeal/none
+    var note: String?          // 用户自由备注（11-03健哥需求：要有地方自己打字写描述）
 
     var grindTotalSeconds: TimeInterval { grindEvents.reduce(0) { $0 + $1.duration } }
     var snoreTotalSeconds: TimeInterval { snoreEvents.reduce(0) { $0 + $1.duration } }

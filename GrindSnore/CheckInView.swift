@@ -10,6 +10,7 @@ struct CheckInView: View {
     @State private var headache = 0
     @State private var sleepFeel = 0
     @State private var triggers: Set<String> = []
+    @State private var note = ""
 
     var body: some View {
         NavigationStack {
@@ -44,6 +45,10 @@ struct CheckInView: View {
                         ))
                     }
                 }
+                Section("Anything else? (optional)") {
+                    TextField("Write anything — how your jaw feels, dreams, stress, the room…", text: $note, axis: .vertical)
+                        .lineLimit(3...8)
+                }
             }
             .navigationTitle("Morning check-in")
             .navigationBarTitleDisplayMode(.inline)
@@ -58,6 +63,7 @@ struct CheckInView: View {
                         n.headache = headache
                         n.sleepFeel = sleepFeel
                         n.triggers = Array(triggers)
+                        n.note = note.isEmpty ? nil : note
                         onDone(n)
                     }
                 }
