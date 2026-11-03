@@ -23,7 +23,7 @@ struct MorningReportView: View {
                 }
                 statGrid
                 timelineSection
-                if !night.triggers.isEmpty { triggerSection }
+                if !night.triggers.isEmpty || !(night.note ?? "").isEmpty { triggerSection }
                 shareSection
             }
             .padding()
