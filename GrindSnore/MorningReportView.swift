@@ -3,11 +3,24 @@ import SwiftUI
 // MARK: - 晨报：时长/两类事件次数时段/强度分布 + 诱因×磨牙对照（增强档②）
 struct MorningReportView: View {
     let night: NightRecord
+    @State private var checkInNight: NightRecord?
 
     var body: some View {
         ScrollView {
             VStack(spacing: 18) {
                 header
+                if night.jawSore == nil {
+                    Button {
+                        checkInNight = night
+                    } label: {
+                        Label("Add morning check-in (30s)", systemImage: "square.and.pencil")
+                            .font(.footnote.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.teal)
+                }
                 statGrid
                 timelineSection
                 if !night.triggers.isEmpty { triggerSection }
@@ -17,6 +30,12 @@ struct MorningReportView: View {
         }
         .navigationTitle("Morning Report")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(item: $checkInNight) { n in
+            CheckInView(night: n) { checked in
+                if let checked { NightStore.update(checked) }
+                checkInNight = nil   // 置 nil 关 sheet（否则又"按钮无反应"）
+            }
+        }
     }
 
     private var header: some View {
