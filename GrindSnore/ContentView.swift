@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var justFinished: NightRecord?
     @State private var showCheckIn = false
     @State private var showReport = false
+    @State private var pendingReport = false
 
     var body: some View {
         NavigationStack {
@@ -45,7 +46,13 @@ struct ContentView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showCheckIn) {
+            .sheet(isPresented: $showCheckIn, onDismiss: {
+                // 自评 sheet 完全关闭后再弹晨报——SwiftUI 禁止 sheet 叠 sheet（此前 Save/Skip"无反应"的病根：旧代码在 sheet 内直弹第二个 sheet 被吞）
+                if pendingReport {
+                    pendingReport = false
+                    showReport = true
+                }
+            }) {
                 CheckInView(night: justFinished ?? placeholderNight) { checked in
                     let finalNight: NightRecord
                     if let checked {
@@ -55,11 +62,9 @@ struct ContentView: View {
                         finalNight = justFinished ?? placeholderNight
                     }
                     nights = NightStore.loadAll()
-                    // 自评完自动展示晨报——流程终点直达，不再让用户找入口
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-                        justFinished = finalNight
-                        showReport = true
-                    }
+                    justFinished = finalNight
+                    showCheckIn = false        // 先关本 sheet，onDismiss 时再弹晨报
+                    pendingReport = true
                 }
             }
             .sheet(isPresented: $showReport) {
