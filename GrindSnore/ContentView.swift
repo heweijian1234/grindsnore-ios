@@ -20,6 +20,13 @@ struct ContentView: View {
                 Spacer(minLength: 8)
             }
             .padding(.horizontal, 20)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(
+                // 夜间舒缓：深夜靛蓝渐变（录音时更暗）
+                LinearGradient(colors: recordingBg,
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("GrindSnore")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -71,14 +78,15 @@ struct ContentView: View {
     private var idleSection: some View {
         VStack(spacing: 18) {
             Spacer()
-            Image(systemName: "moon.zzz.fill")
+            Image(systemName: "moon.stars.fill")
                 .font(.system(size: 56))
-                .foregroundColor(.teal)
+                .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
             Text("Track snoring & teeth grinding")
                 .font(.headline)
+                .foregroundColor(.white.opacity(0.92))
             Text("All analysis happens on this phone. No audio leaves your device.")
                 .font(.footnote)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
 
             Button {
@@ -105,7 +113,7 @@ struct ContentView: View {
             // 放置引导：只写床头柜（苹果 2.4.2 禁"枕头下"）
             Label("Place phone on the bedside table, screen up — mic facing you", systemImage: "bed.double.fill")
                 .font(.footnote)
-                .foregroundColor(.secondary)
+                .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
             Spacer()
 
@@ -115,8 +123,10 @@ struct ContentView: View {
                 } label: {
                     HStack {
                         Image(systemName: "sun.haze.fill")
+                            .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
                         Text("Last night: \(last.date.formatted(.dateTime.month().day())) — \(last.grindEvents.count) grind · \(last.snoreEvents.count) snore")
                             .font(.footnote)
+                            .foregroundColor(.white.opacity(0.7))
                     }
                 }
                 .padding(.bottom, 8)
@@ -124,40 +134,54 @@ struct ContentView: View {
         }
     }
 
+    // 夜间舒缓配色：深夜靛蓝渐变（健哥令：睡前使用，要舒缓）
+    private var recordingBg: [Color] {
+        recorder.isRecording
+            ? [Color(red: 0.07, green: 0.09, blue: 0.18), Color(red: 0.10, green: 0.12, blue: 0.24)]
+            : [Color(red: 0.09, green: 0.13, blue: 0.22), Color(red: 0.13, green: 0.17, blue: 0.28)]
+    }
+
     private var recordingSection: some View {
         VStack(spacing: 16) {
             Spacer()
-            Circle()
-                .fill(Color.red.opacity(0.12 + 0.5 * recorder.lastLevel))
-                .frame(width: 160, height: 160)
-                .overlay(
-                    Image(systemName: "mic.fill")
-                        .font(.system(size: 44))
-                        .foregroundColor(.red)
-                        .scaleEffect(0.8 + 0.4 * recorder.lastLevel)
-                )
-            Label("Recording — do not close the app", systemImage: "record.circle")
-                .foregroundColor(.red)
-                .font(.body.weight(.semibold))
+            // 呼吸圈：暖琥珀（夜间柔和，不用红色）+ 平滑插值动画（easeInOut 0.45s——跟随声音起伏像呼吸不像跳）
+            ZStack {
+                Circle()
+                    .fill(Color(red: 0.94, green: 0.74, blue: 0.42).opacity(0.08 + 0.22 * recorder.lastLevel))
+                    .frame(width: 190, height: 190)
+                    .animation(.easeInOut(duration: 0.45), value: recorder.lastLevel)
+                Circle()
+                    .fill(Color(red: 0.94, green: 0.74, blue: 0.42).opacity(0.10 + 0.18 * recorder.lastLevel))
+                    .frame(width: 150, height: 150)
+                    .animation(.easeInOut(duration: 0.45), value: recorder.lastLevel)
+                Image(systemName: "moon.zzz.fill")
+                    .font(.system(size: 36))
+                    .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
+                    .scaleEffect(0.94 + 0.12 * recorder.lastLevel)
+                    .animation(.easeInOut(duration: 0.45), value: recorder.lastLevel)
+            }
+            Label("Listening — you can lock the screen", systemImage: "record.circle")
+                .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
+                .font(.body.weight(.medium))
 
-            // 前 15 秒测试提示：让用户立刻确认麦克风在工作
             if recorder.elapsedSeconds < 15 {
-                Text("🎤 Test: speak or clap — the circle should pulse")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundColor(.orange)
+                Text("Test: speak softly — the moon glows")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.55))
             }
 
             Text(elapsedString)
                 .font(.system(size: 34, weight: .light).monospacedDigit())
+                .foregroundColor(.white.opacity(0.9))
 
             HStack(spacing: 32) {
                 VStack {
-                    Text("\(recorder.grindCount)").font(.title2.bold())
-                    Text("grind").font(.caption).foregroundColor(.secondary)
+                    Text("\(recorder.grindCount)").font(.title2.bold()).foregroundColor(.white.opacity(0.92))
+                    Text("grind").font(.caption).foregroundColor(.white.opacity(0.45))
                 }
                 VStack {
-                    Text("\(recorder.snoreCount)").font(.title2.bold())
-                    Text("snore").font(.caption).foregroundColor(.secondary)
+                    Text("\(recorder.snoreCount)").font(.title2.bold()).foregroundColor(.white.opacity(0.92))
+                    Text("snore").font(.caption).foregroundColor(.white.opacity(0.45))
                 }
             }
             Spacer()
@@ -177,13 +201,13 @@ struct ContentView: View {
                 justFinished = night
                 showCheckIn = true
             } label: {
-                Label("I'm awake — Stop & Report", systemImage: "stop.circle.fill")
+                Label("I'm awake", systemImage: "sun.haze.fill")
                     .font(.title3.bold())
                     .padding()
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .tint(Color(red: 0.55, green: 0.45, blue: 0.75))   // 柔和暮紫
             .padding(.bottom, 8)
         }
     }
