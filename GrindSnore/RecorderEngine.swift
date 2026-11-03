@@ -23,6 +23,7 @@ final class RecorderEngine: ObservableObject {
     @Published private(set) var snoreCount = 0
     @Published private(set) var grindCount = 0
     @Published private(set) var elapsedSeconds: TimeInterval = 0
+    @Published private(set) var micDenied = false
 
     private(set) var events: [NightEvent] = []
 
@@ -42,7 +43,22 @@ final class RecorderEngine: ObservableObject {
 
     func start() {
         guard !isRecording else { return }
+        // 麦克风权限：拒绝→标志置位（UI 引导去设置）；未决定→弹系统询问后递归
         let session = AVAudioSession.sharedInstance()
+        switch session.recordPermission {
+        case .denied:
+            micDenied = true
+            return
+        case .undetermined:
+            session.requestRecordPermission { [weak self] granted in
+                DispatchQueue.main.async {
+                    if granted { self?.start() } else { self?.micDenied = true }
+                }
+            }
+            return
+        default:
+            break
+        }
         do {
             try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
             try session.setActive(true)

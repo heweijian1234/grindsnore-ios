@@ -7,6 +7,7 @@ struct ContentView: View {
     @State private var nights: [NightRecord] = NightStore.loadAll()
     @State private var justFinished: NightRecord?
     @State private var showCheckIn = false
+    @State private var showReport = false
 
     var body: some View {
         NavigationStack {
@@ -39,7 +40,29 @@ struct ContentView: View {
             }
             .sheet(isPresented: $showCheckIn) {
                 CheckInView(night: justFinished ?? placeholderNight) { checked in
-                    if let checked { NightStore.update(checked) ; nights = NightStore.loadAll() }
+                    let finalNight: NightRecord
+                    if let checked {
+                        NightStore.update(checked)
+                        finalNight = checked
+                    } else {
+                        finalNight = justFinished ?? placeholderNight
+                    }
+                    nights = NightStore.loadAll()
+                    // 自评完自动展示晨报——流程终点直达，不再让用户找入口
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                        justFinished = finalNight
+                        showReport = true
+                    }
+                }
+            }
+            .sheet(isPresented: $showReport) {
+                NavigationStack {
+                    MorningReportView(night: justFinished ?? placeholderNight)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("Done") { showReport = false }
+                            }
+                        }
                 }
             }
         }
@@ -69,6 +92,16 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .tint(.teal)
 
+            if recorder.micDenied {
+                VStack(spacing: 6) {
+                    Text("Microphone access is off — GrindSnore can't listen.")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.red)
+                    Link("Open Settings to allow microphone", destination: URL(string: UIApplication.openSettingsURLString)!)
+                        .font(.footnote.weight(.semibold))
+                }
+            }
+
             // 放置引导：只写床头柜（苹果 2.4.2 禁"枕头下"）
             Label("Place phone on the bedside table, screen up — mic facing you", systemImage: "bed.double.fill")
                 .font(.footnote)
@@ -95,16 +128,24 @@ struct ContentView: View {
         VStack(spacing: 16) {
             Spacer()
             Circle()
-                .fill(Color.red.opacity(0.15 + 0.25 * recorder.lastLevel))
+                .fill(Color.red.opacity(0.12 + 0.5 * recorder.lastLevel))
                 .frame(width: 160, height: 160)
                 .overlay(
                     Image(systemName: "mic.fill")
                         .font(.system(size: 44))
                         .foregroundColor(.red)
+                        .scaleEffect(0.8 + 0.4 * recorder.lastLevel)
                 )
             Label("Recording — do not close the app", systemImage: "record.circle")
                 .foregroundColor(.red)
                 .font(.body.weight(.semibold))
+
+            // 前 15 秒测试提示：让用户立刻确认麦克风在工作
+            if recorder.elapsedSeconds < 15 {
+                Text("🎤 Test: speak or clap — the circle should pulse")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundColor(.orange)
+            }
 
             Text(elapsedString)
                 .font(.system(size: 34, weight: .light).monospacedDigit())
