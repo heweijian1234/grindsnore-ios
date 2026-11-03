@@ -1,0 +1,51 @@
+name: GrindSnore
+options:
+  bundleIdPrefix: com.zeronelabs
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    DEVELOPMENT_TEAM: "FZYVPK6336"
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  GrindSnore:
+    type: application
+    platform: iOS
+    sources:
+      - path: GrindSnore
+    info:
+      path: GrindSnore/Info.plist
+      properties:
+        CFBundleDisplayName: GrindSnore
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        UILaunchScreen:
+          UIColorName: ""
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # 整夜录音后台模式（苹果2.5.4允许录音类App后台跑——SnoreLab先例）
+        UIBackgroundModes:
+          - audio
+        # 🔴麦克风权限描述（缺了启动录音就崩）
+        NSMicrophoneUsageDescription: "GrindSnore records snoring and teeth grinding sounds overnight, on your bedside table, to show you a morning report. Audio never leaves your device."
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.zeronelabs.grindsnore
+        TARGETED_DEVICE_FAMILY: "1"
+        INFOPLIST_KEY_UIUserInterfaceStyle: Automatic
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+
+schemes:
+  GrindSnore:
+    build:
+      targets:
+        GrindSnore: all
+    run:
+      config: Debug
+    archive:
+      config: Release
