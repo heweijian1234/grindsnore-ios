@@ -102,7 +102,7 @@ final class RecorderEngine: ObservableObject {
             sumSq += s * s
         }
         let rms = Double(max((sumSq / Float(n)).squareRoot(), 0))
-        guard rms > 0.0002 else { return (rms, 0.5) }
+        guard rms > 0.0002 else { return FrameResult(rms: rms, lowRatio: 0.5) }
 
         // DFT 1024 点（vDSP_DFT_zop，实部虚部原位）
         let N = 1024
@@ -110,7 +110,7 @@ final class RecorderEngine: ObservableObject {
         var imag = [Float](repeating: 0, count: N)
         for i in 0..<min(n, N) { real[i] = samples[i] }
         guard let setup = vDSP_DFT_zop_CreateSetup(nil, vDSP_Length(N), vDSP_DFT_Direction.FORWARD) else {
-            return (rms, 0.5)
+            return FrameResult(rms: rms, lowRatio: 0.5)
         }
         defer { vDSP_DFT_DestroySetup(setup) }
         real.withUnsafeMutableBufferPointer { rp in
@@ -125,7 +125,7 @@ final class RecorderEngine: ObservableObject {
             if i <= 6 { low += mag }
         }
         let lowRatio = total > 0 ? Double(low / total) : 0.5
-        return (rms, lowRatio)
+        return FrameResult(rms: rms, lowRatio: lowRatio)
     }
 
     // MARK: 事件状态机

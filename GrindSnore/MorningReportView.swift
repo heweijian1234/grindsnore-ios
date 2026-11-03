@@ -117,7 +117,7 @@ struct MorningReportView: View {
 
     private func timelineSlots() -> [(grind: Int, snore: Int)] {
         let slotCount = 24
-        var slots = Array(repeating: (0, 0), count: slotCount)
+        var slots = Array(repeating: (grind: 0, snore: 0), count: slotCount)
         let total = max(night.durationSeconds, 1)
         for e in night.grindEvents {
             let i = min(Int(e.offsetSeconds / total * Double(slotCount)), slotCount - 1)
