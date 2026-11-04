@@ -1,0 +1,13 @@
+name: Quota Test (ubuntu)
+# 诊断用：区分"账号被限制"vs"macOS分钟耗尽"——ubuntu跑得动=只是macOS配额尽
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/quota-test.yml]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - run: echo "ubuntu runner OK $(date)"
