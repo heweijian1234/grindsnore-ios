@@ -169,6 +169,15 @@ struct ContentView: View {
                 .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
                 .font(.body.weight(.medium))
 
+            Picker("灵敏度", selection: $recorder.sensitivity) {
+                Text("高").tag(0)
+                Text("中").tag(1)
+                Text("低").tag(2)
+            }
+            .pickerStyle(.segmented)
+            .frame(width: 200)
+            .onChange(of: recorder.sensitivity) { _ in }
+
             if recorder.elapsedSeconds < 15 {
                 Text("测试：小声说句话——月亮会亮")
                     .font(.footnote)
@@ -180,9 +189,14 @@ struct ContentView: View {
                 .foregroundColor(.white.opacity(0.9))
 
             // 测试期调试 HUD（正式版删）：看声音有没有过门槛——报数字给 AI 校准用
-            Text("电平 \(String(format: "%.4f", recorder.debugRMS)) · 触发门槛 \(String(format: "%.4f", recorder.debugFloor))")
-                .font(.caption2.monospacedDigit())
-                .foregroundColor(.white.opacity(0.35))
+            VStack(spacing: 2) {
+                Text("电平 \(String(format: "%.4f", recorder.debugRMS)) · 触发门槛 \(String(format: "%.4f", recorder.debugFloor))")
+                    .font(.caption2.monospacedDigit())
+                    .foregroundColor(.white.opacity(0.35))
+                Text("上一事件：\(recorder.lastEventDesc)")
+                    .font(.caption2)
+                    .foregroundColor(.white.opacity(0.35))
+            }
 
             HStack(spacing: 32) {
                 VStack {

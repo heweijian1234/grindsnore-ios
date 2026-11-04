@@ -27,6 +27,9 @@ final class RecorderEngine: ObservableObject {
     // 测试期调试 HUD（正式版删）：当前 RMS 与触发门槛，供远程校准
     @Published private(set) var debugRMS: Double = 0
     @Published private(set) var debugFloor: Double = 0
+    @Published private(set) var lastEventDesc = "—"
+    // 灵敏度档（健哥白天测试环境有底噪，自适应门槛被抬太高埋没人声——高档=固定低门槛不吃环境账）
+    @Published var sensitivity: Int = 1   // 0=高 1=中 2=低
 
     private(set) var events: [NightEvent] = []
 
@@ -152,9 +155,15 @@ final class RecorderEngine: ObservableObject {
         guard let start = nightStart else { return }
         let now = Date().timeIntervalSince(start)
 
-        baseline = baseline * 0.995 + rms * 0.005
-        // 11-04 校准 v2：门槛底从 0.004 降到 0.0015、倍数 6→4（床头柜距离磨牙声进得来）；分类移到事件闭合时（完整特征判定）
-        let floor = max(baseline * 4, 0.0015)
+        // 11-04 校准 v3：基线时间常数放慢约 6 倍（0.995→0.9985）——环境突发/波动不再快速抬门槛
+        baseline = baseline * 0.9985 + rms * 0.0015
+        // 灵敏度三档：高=固定 0.0018（嘈杂环境白天测试用，不吃环境账）／中=基线×3／低=基线×5
+        let floor: Double
+        switch sensitivity {
+        case 0: floor = 0.0018
+        case 2: floor = max(baseline * 5, 0.0015)
+        default: floor = max(baseline * 3, 0.0015)
+        }
         let loud = rms > floor
         debugRMS = rms
         debugFloor = floor
@@ -186,13 +195,18 @@ final class RecorderEngine: ObservableObject {
 
     private func appendEvent(startSec: TimeInterval, endSec: TimeInterval) {
         let duration = endSec - startSec
-        guard duration >= 0.6 else { return }   // 11-04：最短时长 0.4→0.6（滤短促杂音）
-        let floor = max(baseline * 4, 0.0015)
+        guard duration >= 0.5 else { return }   // 11-04 v3：0.6→0.5（模仿打鼾单声常不足 0.6s）
+        let floor: Double
+        switch sensitivity {
+        case 0: floor = 0.0018
+        case 2: floor = max(baseline * 5, 0.0015)
+        default: floor = max(baseline * 3, 0.0015)
+        }
         let intensity = min(max((eventPeak - floor) / 0.08, 0), 1)
         let avgLow = eventLowAcc / Double(max(eventFrames, 1))
-        // 分类（闭合时完整判定）：打鼾=低频占比高（>0.62）且时长在 1.2~15s（环境嗡嗡/短促杂音双双被卡）；其余超门槛事件=磨牙候选（宽带/高频）
+        // 分类（闭合时完整判定）：打鼾=低频占比高（>0.62）且时长 1.2~20s；其余超门槛事件=磨牙候选
         let kind: NightEvent.Kind
-        if avgLow > 0.62 && duration >= 1.2 && duration <= 15 {
+        if avgLow > 0.62 && duration >= 1.2 && duration <= 20 {
             kind = .snore
         } else {
             kind = .grind
@@ -201,5 +215,6 @@ final class RecorderEngine: ObservableObject {
                             duration: duration, intensity: intensity, lowRatio: avgLow)
         events.append(ev)
         if kind == .snore { snoreCount += 1 } else { grindCount += 1 }
+        lastEventDesc = "\(kind == .snore ? "打鼾" : "磨牙") \(String(format: "%.1f", duration))s 低频\(String(format: "%.2f", avgLow))"
     }
 }
