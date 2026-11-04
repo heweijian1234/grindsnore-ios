@@ -179,6 +179,11 @@ struct ContentView: View {
                 .font(.system(size: 34, weight: .light).monospacedDigit())
                 .foregroundColor(.white.opacity(0.9))
 
+            // 测试期调试 HUD（正式版删）：看声音有没有过门槛——报数字给 AI 校准用
+            Text("电平 \(String(format: "%.4f", recorder.debugRMS)) · 触发门槛 \(String(format: "%.4f", recorder.debugFloor))")
+                .font(.caption2.monospacedDigit())
+                .foregroundColor(.white.opacity(0.35))
+
             HStack(spacing: 32) {
                 VStack {
                     Text("\(recorder.grindCount)").font(.title2.bold()).foregroundColor(.white.opacity(0.92))

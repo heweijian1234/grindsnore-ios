@@ -4,6 +4,7 @@ import SwiftUI
 struct MorningReportView: View {
     let night: NightRecord
     @State private var checkInNight: NightRecord?
+    @State private var exportRange = 0
 
     var body: some View {
         ScrollView {
@@ -115,15 +116,42 @@ struct MorningReportView: View {
 
     private var shareSection: some View {
         VStack(spacing: 8) {
-            ShareLink(item: textReport, subject: Text("GrindSnore 夜间报告")) {
+            Picker("导出范围", selection: $exportRange) {
+                Text("本晚").tag(0)
+                Text("最近7晚").tag(1)
+                Text("全部").tag(2)
+            }
+            .pickerStyle(.segmented)
+            ShareLink(item: rangeText, subject: Text("GrindSnore 夜间报告")) {
                 Label("分享报告（文字版）", systemImage: "square.and.arrow.up")
                     .frame(maxWidth: .infinity)
                     .padding()
             }
             .buttonStyle(.borderedProminent)
-            Text("多夜汇总 PDF（给牙医看的专业版）将随 Pro 解锁")
+            Text("多夜汇总 PDF（给医生看的专业版）将随 Pro 解锁")
                 .font(.caption).foregroundColor(.secondary)
         }
+    }
+
+    private var rangeText: String {
+        let all = NightStore.loadAll()
+        let list: [NightRecord]
+        switch exportRange {
+        case 1: list = Array(all.suffix(7))
+        case 2: list = all
+        default: list = [night]
+        }
+        guard list.count > 1 else { return textReport }
+        var lines = ["GrindSnore 多夜报告（\(list.count) 晚）", ""]
+        let totalGrind = list.reduce(0) { $0 + $1.grindEvents.count }
+        let totalSnore = list.reduce(0) { $0 + $1.snoreEvents.count }
+        for n in list {
+            lines.append("\(n.date.formatted(.dateTime.month().day()))：磨牙 \(n.grindEvents.count) 次 · 打鼾 \(n.snoreEvents.count) 次 · 记录 \(Int(n.durationSeconds / 60)) 分钟")
+        }
+        lines.append("")
+        lines.append("合计：磨牙 \(totalGrind) 次 · 打鼾 \(totalSnore) 次 · 日均磨牙 \(list.isEmpty ? 0 : totalGrind / list.count) 次")
+        lines.append("（GrindSnore 本机记录——规律参考，非诊断）")
+        return lines.joined(separator: "\n")
     }
 
     // MARK: helpers

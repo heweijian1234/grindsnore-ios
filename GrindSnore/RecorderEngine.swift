@@ -24,13 +24,15 @@ final class RecorderEngine: ObservableObject {
     @Published private(set) var grindCount = 0
     @Published private(set) var elapsedSeconds: TimeInterval = 0
     @Published private(set) var micDenied = false
+    // 测试期调试 HUD（正式版删）：当前 RMS 与触发门槛，供远程校准
+    @Published private(set) var debugRMS: Double = 0
+    @Published private(set) var debugFloor: Double = 0
 
     private(set) var events: [NightEvent] = []
 
     private let engine = AVAudioEngine()
     private var baseline: Double = 0.001
     private var eventStartSec: TimeInterval?
-    private var eventKind: NightEvent.Kind?
     private var eventPeak: Double = 0
     private var eventLowAcc: Double = 0
     private var eventFrames = 0
@@ -70,7 +72,7 @@ final class RecorderEngine: ObservableObject {
         snoreCount = 0
         grindCount = 0
         baseline = 0.001
-        eventStartSec = nil; eventKind = nil; lastLoudSec = nil
+        eventStartSec = nil; lastLoudSec = nil
         nightStart = Date()
 
         let input = engine.inputNode
@@ -151,14 +153,16 @@ final class RecorderEngine: ObservableObject {
         let now = Date().timeIntervalSince(start)
 
         baseline = baseline * 0.995 + rms * 0.005
-        let floor = max(baseline * 6, 0.004)
+        // 11-04 校准 v2：门槛底从 0.004 降到 0.0015、倍数 6→4（床头柜距离磨牙声进得来）；分类移到事件闭合时（完整特征判定）
+        let floor = max(baseline * 4, 0.0015)
         let loud = rms > floor
+        debugRMS = rms
+        debugFloor = floor
         lastLevel = min(max((rms - baseline) / 0.1, 0), 1)
 
         if loud {
             if eventStartSec == nil {
                 eventStartSec = now
-                eventKind = nil
                 eventPeak = rms; eventLowAcc = lowRatio; eventFrames = 1
             } else {
                 eventPeak = max(eventPeak, rms)
@@ -166,31 +170,33 @@ final class RecorderEngine: ObservableObject {
                 eventFrames += 1
             }
             lastLoudSec = now
-            if eventKind == nil, eventFrames >= 8 {
-                let avgLow = eventLowAcc / Double(max(eventFrames, 1))
-                eventKind = (avgLow > 0.55) ? .snore : .grind
-            }
-        } else if let es = eventStartSec, eventKind != nil,
+        } else if let es = eventStartSec,
                   let lastLoud = lastLoudSec, now - lastLoud > quietGapToClose {
             appendEvent(startSec: es, endSec: lastLoud)
-            eventStartSec = nil; eventKind = nil; lastLoudSec = nil
+            eventStartSec = nil; lastLoudSec = nil
         }
     }
 
     private func closeOpenEvent() {
-        guard let es = eventStartSec, eventKind != nil else { return }
+        guard let es = eventStartSec else { return }
         let end = lastLoudSec ?? elapsedSeconds
         appendEvent(startSec: es, endSec: end)
-        eventStartSec = nil; eventKind = nil; lastLoudSec = nil
+        eventStartSec = nil; lastLoudSec = nil
     }
 
     private func appendEvent(startSec: TimeInterval, endSec: TimeInterval) {
-        guard let kind = eventKind else { return }
         let duration = endSec - startSec
-        guard duration >= 0.4 else { return }
-        let floor = max(baseline * 6, 0.004)
+        guard duration >= 0.6 else { return }   // 11-04：最短时长 0.4→0.6（滤短促杂音）
+        let floor = max(baseline * 4, 0.0015)
         let intensity = min(max((eventPeak - floor) / 0.08, 0), 1)
         let avgLow = eventLowAcc / Double(max(eventFrames, 1))
+        // 分类（闭合时完整判定）：打鼾=低频占比高（>0.62）且时长在 1.2~15s（环境嗡嗡/短促杂音双双被卡）；其余超门槛事件=磨牙候选（宽带/高频）
+        let kind: NightEvent.Kind
+        if avgLow > 0.62 && duration >= 1.2 && duration <= 15 {
+            kind = .snore
+        } else {
+            kind = .grind
+        }
         let ev = NightEvent(id: UUID(), kind: kind, offsetSeconds: startSec,
                             duration: duration, intensity: intensity, lowRatio: avgLow)
         events.append(ev)
