@@ -30,8 +30,8 @@ targets:
         # 整夜录音后台模式（苹果2.5.4允许录音类App后台跑——SnoreLab先例）
         UIBackgroundModes:
           - audio
-        # 🔴麦克风权限描述（缺了启动录音就崩）
-        NSMicrophoneUsageDescription: "GrindSnore records snoring and teeth grinding sounds overnight, on your bedside table, to show you a morning report. Audio never leaves your device."
+        # 🔴麦克风权限描述（缺了启动录音就崩）——测试期中文版，上架前本地化
+        NSMicrophoneUsageDescription: "GrindSnore 整夜在床头柜上记录打鼾和磨牙声，早上给你一份晨报。音频永不离开你的手机。"
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:

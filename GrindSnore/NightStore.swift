@@ -53,10 +53,10 @@ enum NightStore {
     static func update(_ night: NightRecord) { save(night) }
 
     static let triggerOptions: [(key: String, label: String)] = [
-        ("coffee", "Coffee ☕️"),
-        ("alcohol", "Alcohol 🍺"),
-        ("stress", "Stress 😣"),
-        ("lateMeal", "Late meal 🍜"),
-        ("none", "None of these"),
+        ("coffee", "咖啡 ☕️"),
+        ("alcohol", "喝酒 🍺"),
+        ("stress", "压力大 😣"),
+        ("lateMeal", "夜宵/吃太晚 🍜"),
+        ("none", "都没有"),
     ]
 }

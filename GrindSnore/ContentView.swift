@@ -72,7 +72,7 @@ struct ContentView: View {
                     MorningReportView(night: justFinished ?? placeholderNight)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) {
-                                Button("Done") { showReport = false }
+                                Button("完成") { showReport = false }
                             }
                         }
                 }
@@ -86,10 +86,10 @@ struct ContentView: View {
             Image(systemName: "moon.stars.fill")
                 .font(.system(size: 56))
                 .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
-            Text("Track snoring & teeth grinding")
+            Text("记录打鼾和磨牙")
                 .font(.headline)
                 .foregroundColor(.white.opacity(0.92))
-            Text("All analysis happens on this phone. No audio leaves your device.")
+            Text("全部分析在本机完成，音频不出手机")
                 .font(.footnote)
                 .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -97,7 +97,7 @@ struct ContentView: View {
             Button {
                 recorder.start()
             } label: {
-                Label("Start Night", systemImage: "record.circle")
+                Label("开始今夜记录", systemImage: "record.circle")
                     .font(.title3.bold())
                     .padding()
                     .frame(maxWidth: .infinity)
@@ -107,16 +107,16 @@ struct ContentView: View {
 
             if recorder.micDenied {
                 VStack(spacing: 6) {
-                    Text("Microphone access is off — GrindSnore can't listen.")
+                    Text("麦克风权限被关闭——无法录音")
                         .font(.footnote.weight(.semibold))
                         .foregroundColor(.red)
-                    Link("Open Settings to allow microphone", destination: URL(string: UIApplication.openSettingsURLString)!)
+                    Link("去设置开启麦克风", destination: URL(string: UIApplication.openSettingsURLString)!)
                         .font(.footnote.weight(.semibold))
                 }
             }
 
             // 放置引导：只写床头柜（苹果 2.4.2 禁"枕头下"）
-            Label("Place phone on the bedside table, screen up — mic facing you", systemImage: "bed.double.fill")
+            Label("手机放床头柜，屏幕朝上，麦克风朝向你", systemImage: "bed.double.fill")
                 .font(.footnote)
                 .foregroundColor(.white.opacity(0.5))
                 .multilineTextAlignment(.center)
@@ -129,7 +129,7 @@ struct ContentView: View {
                     HStack {
                         Image(systemName: "sun.haze.fill")
                             .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
-                        Text("Last night: \(last.date.formatted(.dateTime.month().day())) — \(last.grindEvents.count) grind · \(last.snoreEvents.count) snore")
+                        Text("昨晚（\(last.date.formatted(.dateTime.month().day()))）：磨牙 \(last.grindEvents.count) 次 · 打鼾 \(last.snoreEvents.count) 次")
                             .font(.footnote)
                             .foregroundColor(.white.opacity(0.7))
                     }
@@ -165,12 +165,12 @@ struct ContentView: View {
                     .scaleEffect(0.94 + 0.12 * recorder.lastLevel)
                     .animation(.easeInOut(duration: 0.45), value: recorder.lastLevel)
             }
-            Label("Listening — you can lock the screen", systemImage: "record.circle")
+            Label("聆听中——可以锁屏", systemImage: "record.circle")
                 .foregroundColor(Color(red: 0.95, green: 0.82, blue: 0.58))
                 .font(.body.weight(.medium))
 
             if recorder.elapsedSeconds < 15 {
-                Text("Test: speak softly — the moon glows")
+                Text("测试：小声说句话——月亮会亮")
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.55))
             }
@@ -182,11 +182,11 @@ struct ContentView: View {
             HStack(spacing: 32) {
                 VStack {
                     Text("\(recorder.grindCount)").font(.title2.bold()).foregroundColor(.white.opacity(0.92))
-                    Text("grind").font(.caption).foregroundColor(.white.opacity(0.45))
+                    Text("磨牙").font(.caption).foregroundColor(.white.opacity(0.45))
                 }
                 VStack {
                     Text("\(recorder.snoreCount)").font(.title2.bold()).foregroundColor(.white.opacity(0.92))
-                    Text("snore").font(.caption).foregroundColor(.white.opacity(0.45))
+                    Text("打鼾").font(.caption).foregroundColor(.white.opacity(0.45))
                 }
             }
             Spacer()
@@ -206,7 +206,7 @@ struct ContentView: View {
                 justFinished = night
                 showCheckIn = true
             } label: {
-                Label("I'm awake", systemImage: "sun.haze.fill")
+                Label("我醒了——停止并出报告", systemImage: "sun.haze.fill")
                     .font(.title3.bold())
                     .padding()
                     .frame(maxWidth: .infinity)

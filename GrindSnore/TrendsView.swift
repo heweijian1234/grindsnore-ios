@@ -10,7 +10,7 @@ struct TrendsView: View {
         List {
             Section {
                 if recent.isEmpty {
-                    Text("No nights recorded yet. Record your first night!")
+                    Text("还没有记录——今晚录第一夜！")
                         .foregroundColor(.secondary)
                 }
                 ForEach(recent.reversed()) { night in
@@ -22,12 +22,12 @@ struct TrendsView: View {
                 }
             }
             if recent.count >= 2 {
-                Section("Last 7 nights · grind events") {
+                Section("最近 7 夜 · 磨牙次数") {
                     barChart
                 }
             }
         }
-        .navigationTitle("Trends")
+        .navigationTitle("趋势")
         .navigationBarTitleDisplayMode(.inline)
     }
 
@@ -40,10 +40,10 @@ struct TrendsView: View {
                     .font(.caption).foregroundColor(.orange)
                 Label("\(night.snoreEvents.count)", systemImage: "waveform")
                     .font(.caption).foregroundColor(.indigo)
-                Text("\(Int(night.durationSeconds / 60)) min")
+                Text("\(Int(night.durationSeconds / 60)) 分钟")
                     .font(.caption).foregroundColor(.secondary)
                 if night.jawSore != nil {
-                    Text("jaw: \(night.jawSore!)").font(.caption).foregroundColor(.secondary)
+                    Text("下巴: \(["无","轻微","酸痛","很痛"][min(night.jawSore!,3)])").font(.caption).foregroundColor(.secondary)
                 }
             }
         }

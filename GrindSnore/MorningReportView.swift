@@ -1,6 +1,6 @@
 import SwiftUI
 
-// MARK: - 晨报：时长/两类事件次数时段/强度分布 + 诱因×磨牙对照（增强档②）
+// MARK: - 晨报：时长/两类事件次数时段/强度分布 + 诱因×磨牙对照（增强档②）+ 备注
 struct MorningReportView: View {
     let night: NightRecord
     @State private var checkInNight: NightRecord?
@@ -13,7 +13,7 @@ struct MorningReportView: View {
                     Button {
                         checkInNight = night
                     } label: {
-                        Label("Add morning check-in (30s)", systemImage: "square.and.pencil")
+                        Label("补晨间自评（30秒）", systemImage: "square.and.pencil")
                             .font(.footnote.weight(.semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 8)
@@ -28,7 +28,7 @@ struct MorningReportView: View {
             }
             .padding()
         }
-        .navigationTitle("Morning Report")
+        .navigationTitle("晨报")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(item: $checkInNight) { n in
             CheckInView(night: n) { checked in
@@ -40,9 +40,9 @@ struct MorningReportView: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            Text(night.date.formatted(.dateTime.weekday().month().day()))
+            Text(night.date.formatted(.dateTime.month().day()))
                 .font(.headline)
-            Text("\(Int(night.durationSeconds / 60)) min tracked")
+            Text("记录了 \(Int(night.durationSeconds / 60)) 分钟")
                 .font(.subheadline).foregroundColor(.secondary)
         }
         .frame(maxWidth: .infinity)
@@ -52,17 +52,17 @@ struct MorningReportView: View {
 
     private var statGrid: some View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            StatCell(title: "Grind events", value: "\(night.grindEvents.count)", sub: "\(Int(night.grindTotalSeconds))s total", color: .orange)
-            StatCell(title: "Snore events", value: "\(night.snoreEvents.count)", sub: "\(Int(night.snoreTotalSeconds))s total", color: .indigo)
-            StatCell(title: "Grind intensity", value: Int(night.avgGrindIntensity * 100) == 0 ? "—" : "\(Int(night.avgGrindIntensity * 100))", sub: "avg of 100", color: .red)
-            StatCell(title: "Jaw feel", value: jawLabel, sub: "self-reported", color: .teal)
+            StatCell(title: "磨牙次数", value: "\(night.grindEvents.count)", sub: "累计 \(Int(night.grindTotalSeconds)) 秒", color: .orange)
+            StatCell(title: "打鼾次数", value: "\(night.snoreEvents.count)", sub: "累计 \(Int(night.snoreTotalSeconds)) 秒", color: .indigo)
+            StatCell(title: "磨牙强度", value: Int(night.avgGrindIntensity * 100) == 0 ? "—" : "\(Int(night.avgGrindIntensity * 100))", sub: "平均值（满分100）", color: .red)
+            StatCell(title: "下巴感觉", value: jawLabel, sub: "自评", color: .teal)
         }
     }
 
-    // 事件时间线：一夜 24 格（每 30 分钟一格），点密度=该时段事件数
+    // 事件时间线：24 格（每 30 分钟一格），点密度=该时段事件数
     private var timelineSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("When it happened").font(.subheadline.weight(.semibold))
+            Text("发生在什么时段").font(.subheadline.weight(.semibold))
             let slots = timelineSlots()
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 3), count: 12), spacing: 3) {
                 ForEach(0..<slots.count, id: \.self) { i in
@@ -72,40 +72,40 @@ struct MorningReportView: View {
                 }
             }
             HStack {
-                Text("night start").font(.caption2).foregroundColor(.secondary)
+                Text("入睡").font(.caption2).foregroundColor(.secondary)
                 Spacer()
-                Text("morning").font(.caption2).foregroundColor(.secondary)
+                Text("早晨").font(.caption2).foregroundColor(.secondary)
             }
             HStack(spacing: 12) {
-                legend(color: .orange, text: "grind")
-                legend(color: .indigo, text: "snore")
-                legend(color: .teal.opacity(0.25), text: "both/quiet")
+                legend(color: .orange, text: "磨牙")
+                legend(color: .indigo, text: "打鼾")
+                legend(color: .teal.opacity(0.25), text: "两者/安静")
             }
         }
         .padding()
         .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
     }
 
-    // 诱因×磨牙对照（增强档②：用户痛点=找原因）
+    // 诱因×磨牙对照（增强档②：用户痛点=找原因）+ 备注
     private var triggerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Triggers you logged").font(.subheadline.weight(.semibold))
+            Text("你记录的诱因").font(.subheadline.weight(.semibold))
             Text(night.triggers.map { t in NightStore.triggerOptions.first(where: { $0.key == t })?.label ?? t }.joined(separator: "  ·  "))
                 .font(.body)
             if let note = night.note, !note.isEmpty {
-                Text("Your note").font(.caption).foregroundColor(.secondary)
+                Text("你的备注").font(.caption).foregroundColor(.secondary)
                 Text(note).font(.callout)
             }
             let firstHalf = night.grindEvents.filter { $0.offsetSeconds < night.durationSeconds / 2 }.count
             let secondHalf = night.grindEvents.count - firstHalf
             if night.grindEvents.count > 0 {
-                Text(firstHalf >= secondHalf * 2 ? "Grinding concentrated in the first half of the night — often linked to alcohol or late meals." :
-                     (secondHalf >= firstHalf * 2 ? "Grinding concentrated in the second half — often linked to stress and morning anxiety." :
-                      "Grinding spread evenly across the night."))
+                Text(firstHalf >= secondHalf * 2 ? "磨牙集中在**前半夜**——常与喝酒、吃太晚有关。" :
+                     (secondHalf >= firstHalf * 2 ? "磨牙集中在**后半夜**——常与压力、晨间焦虑有关。" :
+                      "磨牙整夜分布均匀。"))
                     .font(.footnote)
                     .foregroundColor(.secondary)
             }
-            Text("Patterns, not diagnosis — track over multiple nights to see what affects you.")
+            Text("这是规律不是诊断——多记几晚，看什么在影响你。")
                 .font(.caption2)
                 .foregroundColor(.secondary)
         }
@@ -115,13 +115,13 @@ struct MorningReportView: View {
 
     private var shareSection: some View {
         VStack(spacing: 8) {
-            ShareLink(item: textReport, subject: Text("GrindSnore night report")) {
-                Label("Share report (text)", systemImage: "square.and.arrow.up")
+            ShareLink(item: textReport, subject: Text("GrindSnore 夜间报告")) {
+                Label("分享报告（文字版）", systemImage: "square.and.arrow.up")
                     .frame(maxWidth: .infinity)
                     .padding()
             }
             .buttonStyle(.borderedProminent)
-            Text("Full PDF export for your dentist comes with Pro.")
+            Text("多夜汇总 PDF（给牙医看的专业版）将随 Pro 解锁")
                 .font(.caption).foregroundColor(.secondary)
         }
     }
@@ -130,10 +130,10 @@ struct MorningReportView: View {
 
     private var jawLabel: String {
         switch night.jawSore {
-        case 0: return "None"
-        case 1: return "Mild"
-        case 2: return "Sore"
-        case 3: return "Very"
+        case 0: return "无"
+        case 1: return "轻微"
+        case 2: return "酸痛"
+        case 3: return "很痛"
         default: return "—"
         }
     }
@@ -169,17 +169,18 @@ struct MorningReportView: View {
 
     private var textReport: String {
         let headacheText: String
-        if let h = night.headache { headacheText = "\(h)" } else { headacheText = "—" }
+        if let h = night.headache { headacheText = ["无","轻微","中等","厉害"][min(h,3)] } else { headacheText = "—" }
         let sleepText: String
-        if let s = night.sleepFeel { sleepText = "\(s)" } else { sleepText = "—" }
+        if let s = night.sleepFeel { sleepText = ["差","一般","好","很好"][min(s,3)] } else { sleepText = "—" }
         return """
-        GrindSnore — night of \(night.date.formatted(.dateTime.month().day()))
-        Tracked: \(Int(night.durationSeconds / 60)) min
-        Grind events: \(night.grindEvents.count) (\(Int(night.grindTotalSeconds))s, intensity \(Int(night.avgGrindIntensity * 100))/100)
-        Snore events: \(night.snoreEvents.count) (\(Int(night.snoreTotalSeconds))s)
-        Jaw: \(jawLabel) · Headache: \(headacheText) · Sleep: \(sleepText)
-        Triggers: \(night.triggers.isEmpty ? "—" : night.triggers.joined(separator: ", "))
-        (Recorded on-device by GrindSnore — pattern tracking, not a diagnosis.)
+        GrindSnore 夜间报告 · \(night.date.formatted(.dateTime.month().day()))
+        记录时长：\(Int(night.durationSeconds / 60)) 分钟
+        磨牙：\(night.grindEvents.count) 次（累计 \(Int(night.grindTotalSeconds)) 秒，强度 \(Int(night.avgGrindIntensity * 100))/100）
+        打鼾：\(night.snoreEvents.count) 次（累计 \(Int(night.snoreTotalSeconds)) 秒）
+        下巴：\(jawLabel) · 头痛：\(headacheText) · 睡眠：\(sleepText)
+        诱因：\(night.triggers.isEmpty ? "—" : night.triggers.joined(separator: ", "))
+        备注：\(night.note ?? "—")
+        （GrindSnore 本机记录——规律参考，非诊断）
         """
     }
 }
