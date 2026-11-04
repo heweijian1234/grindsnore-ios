@@ -185,14 +185,16 @@ final class RecorderEngine: ObservableObject {
         guard let start = nightStart else { return }
         let now = Date().timeIntervalSince(start)
 
-        // 11-04 校准 v4（基于健哥实测音频分析定死）：环境底噪实测 0.011-0.013，模拟声 0.03-0.21
-        // 自适应门槛在该环境已证不可靠（环境尖峰与目标声重叠）——高/中改固定值
+        // 11-05 校准 v5（健哥真实磨牙+打鼾实测录音离线重放定案）：
+        // 真实磨牙只有底噪的1.5-1.8倍（AGC链路底噪0.003/磨牙0.0036-0.0055/尖峰0.04；打鼾0.03-0.06）——
+        // 固定门槛在两种链路(飞书AGC vs App原始流)间顾此失彼，倍率过高埋没真实磨牙。
+        // 三档全自适应倍率：易触发×1.5(真实磨牙刚过线·宁可多记可删)/均衡×2.2(打鼾稳过·磨牙尖峰过)/防误报×3.0
         baseline = baseline * 0.9985 + rms * 0.0015
         let floor: Double
         switch sensitivity {
-        case 0: floor = 0.020   // 高：固定，略高于实测底噪（会收少量环境尖峰）
-        case 2: floor = max(baseline * 4, 0.013)  // 低：自适应（夜间极安静环境）
-        default: floor = 0.030  // 中（默认）：实测最优——环境90%分位在线下，模拟声过线
+        case 0: floor = max(baseline * 1.5, 0.0015)   // 易触发：真实磨牙(底噪×1.8)过线
+        case 2: floor = max(baseline * 3.0, 0.0035)   // 防误报
+        default: floor = max(baseline * 2.2, 0.0025)  // 均衡
         }
         let loud = rms > floor
         debugRMS = rms
@@ -225,12 +227,12 @@ final class RecorderEngine: ObservableObject {
 
     private func appendEvent(startSec: TimeInterval, endSec: TimeInterval) {
         let duration = endSec - startSec
-        guard duration >= 0.5 else { return }
+        guard duration >= 0.3 else { return }  // 11-05: 0.5→0.3（磨牙短瞬声，重放实证0.4s段被卡）
         let floor: Double
         switch sensitivity {
-        case 0: floor = 0.020
-        case 2: floor = max(baseline * 4, 0.013)
-        default: floor = 0.030
+        case 0: floor = max(baseline * 1.5, 0.0015)
+        case 2: floor = max(baseline * 3.0, 0.0035)
+        default: floor = max(baseline * 2.2, 0.0025)
         }
         let intensity = min(max((eventPeak - floor) / 0.08, 0), 1)
         let avgLow = eventLowAcc / Double(max(eventFrames, 1))

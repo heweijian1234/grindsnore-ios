@@ -173,12 +173,12 @@ struct ContentView: View {
                 .font(.body.weight(.medium))
 
             Picker("灵敏度", selection: $recorder.sensitivity) {
-                Text("高").tag(0)
-                Text("中").tag(1)
-                Text("低").tag(2)
+                Text("易触发").tag(0)
+                Text("均衡").tag(1)
+                Text("防误报").tag(2)
             }
             .pickerStyle(.segmented)
-            .frame(width: 200)
+            .frame(width: 240)
             .onChange(of: recorder.sensitivity) { _ in }
 
             if recorder.elapsedSeconds < 15 {
