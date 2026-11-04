@@ -3,6 +3,7 @@ import SwiftUI
 // MARK: - 晨报：时长/两类事件次数时段/强度分布 + 诱因×磨牙对照（增强档②）+ 备注
 struct MorningReportView: View {
     let night: NightRecord
+    @State private var editableNight: NightRecord?
     @State private var checkInNight: NightRecord?
     @State private var exportRange = 0
 
@@ -23,6 +24,19 @@ struct MorningReportView: View {
                     .tint(.teal)
                 }
                 statGrid
+                NavigationLink {
+                    EventListView(night: Binding(
+                        get: { editableNight ?? night },
+                        set: { editableNight = $0 }
+                    ))
+                } label: {
+                    Label("事件明细——回放片段 / 修正误报", systemImage: "waveform.circle")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.bordered)
+                .tint(.teal)
                 timelineSection
                 if !night.triggers.isEmpty || !(night.note ?? "").isEmpty { triggerSection }
                 shareSection

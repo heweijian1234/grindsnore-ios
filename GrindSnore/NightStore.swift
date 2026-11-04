@@ -24,7 +24,37 @@ struct NightRecord: Codable, Identifiable {
     }
 }
 
+// 修正日志（健哥 11-04 令：用户修正=识别算法的改进数据，随反馈上报）
+struct CorrectionLog: Codable {
+    let date: Date
+    let from: String   // 原判定
+    let to: String     // 改成（"磨牙"/"打鼾"/"删除"）
+}
+
 enum NightStore {
+
+    static var correctionsURL: URL {
+        directory.appendingPathComponent("corrections.json")
+    }
+
+    static func logCorrection(from: String, to: String) {
+        var logs = loadCorrections()
+        logs.append(CorrectionLog(date: Date(), from: from, to: to))
+        if let data = try? JSONEncoder().encode(logs) {
+            try? data.write(to: correctionsURL)
+        }
+    }
+
+    static func loadCorrections() -> [CorrectionLog] {
+        guard let data = try? Data(contentsOf: correctionsURL),
+              let list = try? JSONDecoder().decode([CorrectionLog].self, from: data) else { return [] }
+        return list
+    }
+
+    static var clipsDir: URL {
+        RecorderEngine.clipsDir
+    }
+
     static var directory: URL {
         let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
         let dir = docs.appendingPathComponent("nights", isDirectory: true)

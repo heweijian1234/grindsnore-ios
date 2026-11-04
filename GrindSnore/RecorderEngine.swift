@@ -10,11 +10,14 @@ final class RecorderEngine: ObservableObject {
     struct NightEvent: Codable, Identifiable {
         enum Kind: String, Codable { case snore, grind }
         let id: UUID
-        let kind: Kind
-        let offsetSeconds: TimeInterval  // 相对夜开始的秒数
+        var kind: Kind                   // 用户可修正（健哥 11-04 令）
+        let offsetSeconds: TimeInterval
         let duration: TimeInterval
-        let intensity: Double            // 0...1
-        let lowRatio: Double             // 事件期间低频占比
+        let intensity: Double
+        let lowRatio: Double
+        var clipFile: String?            // 回放片段（m4a）
+        var userCorrected: Bool = false  // 用户改过类型
+        var userDeleted: Bool = false    // 用户判误报删除
     }
 
     @Published private(set) var isRecording = false
@@ -43,6 +46,21 @@ final class RecorderEngine: ObservableObject {
     private let quietGapToClose: TimeInterval = 1.6
 
     private var tickTimer: Timer?
+
+    // 环形音频缓存（健哥 11-04 令：事件可回放）——保最近 30 秒样本，事件闭合时导出片段
+    private let ringLock = NSLock()
+    private var ringBuffer: [Float] = []
+    private var ringStartOffset: Double = 0   // ringBuffer[0] 对应的夜内偏移秒
+    private var sampleRate: Double = 48000
+    private let ringSeconds: Double = 30
+    private var clipCounter = 0
+
+    static var clipsDir: URL {
+        let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let dir = docs.appendingPathComponent("clips", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir
+    }
 
     // MARK: 生命周期
 
@@ -81,10 +99,22 @@ final class RecorderEngine: ObservableObject {
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
         guard format.sampleRate > 0, format.channelCount > 0 else { return }
+        sampleRate = format.sampleRate
+        ringLock.lock(); ringBuffer.removeAll(); ringStartOffset = 0; ringLock.unlock()
         input.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] buffer, _ in
             guard let self, let channel = buffer.floatChannelData?[0] else { return }
             let n = Int(buffer.frameLength)
             guard n > 0 else { return }
+            // 环形缓存追加（音频线程，锁保护）
+            self.ringLock.lock()
+            self.ringBuffer.append(contentsOf: UnsafeBufferPointer(start: channel, count: n))
+            let maxLen = Int(self.sampleRate * self.ringSeconds)
+            if self.ringBuffer.count > maxLen {
+                let overflow = self.ringBuffer.count - maxLen
+                self.ringBuffer.removeFirst(overflow)
+                self.ringStartOffset += Double(overflow) / self.sampleRate
+            }
+            self.ringLock.unlock()
             let result = Self.analyze(channel, n)
             DispatchQueue.main.async {
                 self.handle(rms: result.rms, lowRatio: result.lowRatio)
@@ -212,9 +242,55 @@ final class RecorderEngine: ObservableObject {
             kind = .grind
         }
         let ev = NightEvent(id: UUID(), kind: kind, offsetSeconds: startSec,
-                            duration: duration, intensity: intensity, lowRatio: avgLow)
+                            duration: duration, intensity: intensity, lowRatio: avgLow,
+                            clipFile: exportClip(from: max(startSec - 2, 0), to: endSec + 1))
         events.append(ev)
         if kind == .snore { snoreCount += 1 } else { grindCount += 1 }
         lastEventDesc = "\(kind == .snore ? "打鼾" : "磨牙") \(String(format: "%.1f", duration))s 低频\(String(format: "%.2f", avgLow))"
+    }
+
+    /// 从环形缓存导出片段（m4a）——事件前 2 秒到结束后 1 秒
+    private func exportClip(from: Double, to: Double) -> String? {
+        ringLock.lock()
+        let bufferCopy = ringBuffer
+        let ringStart = ringStartOffset
+        ringLock.unlock()
+        guard !bufferCopy.isEmpty else { return nil }
+        let sr = sampleRate
+        let startIdx = max(Int((from - ringStart) * sr), 0)
+        let endIdx = min(Int((to - ringStart) * sr), bufferCopy.count)
+        guard endIdx > startIdx else { return nil }
+        let samples = Array(bufferCopy[startIdx..<endIdx])
+        clipCounter += 1
+        let name = "clip-\(clipCounter).m4a"
+        let url = Self.clipsDir.appendingPathComponent(name)
+        guard let outFormat = AVAudioFormat(settings: [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: sr,
+            AVNumberOfChannelsKey: 1,
+            AVEncoderAudioQualityKey: AVAudioQuality.medium,
+        ]) else { return nil }
+        do {
+            let file = try AVAudioFile(forWriting: url, settings: outFormat.settings)
+            let srcFormat = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sr, channels: 1, interleaved: false)!
+            let chunkFrames = 48000
+            var idx = 0
+            while idx < samples.count {
+                let frames = min(chunkFrames, samples.count - idx)
+                if let buf = AVAudioPCMBuffer(pcmFormat: srcFormat, frameCapacity: AVAudioFrameCount(frames)) {
+                    buf.frameLength = AVAudioFrameCount(frames)
+                    if let ptr = buf.floatChannelData?[0] {
+                        for i in 0..<frames { ptr[i] = samples[idx + i] }
+                    }
+                    try file.write(from: buf)
+                }
+                idx += frames
+            }
+            try file.close()
+            return name
+        } catch {
+            print("clip export error: \(error)")
+            return nil
+        }
     }
 }
