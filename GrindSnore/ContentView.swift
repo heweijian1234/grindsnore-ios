@@ -39,6 +39,9 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink { FeedbackView() } label: { Image(systemName: "paperplane") }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     NavigationLink {
                         TrendsView(nights: $nights)
                     } label: {
