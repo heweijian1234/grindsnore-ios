@@ -155,14 +155,14 @@ final class RecorderEngine: ObservableObject {
         guard let start = nightStart else { return }
         let now = Date().timeIntervalSince(start)
 
-        // 11-04 校准 v3：基线时间常数放慢约 6 倍（0.995→0.9985）——环境突发/波动不再快速抬门槛
+        // 11-04 校准 v4（基于健哥实测音频分析定死）：环境底噪实测 0.011-0.013，模拟声 0.03-0.21
+        // 自适应门槛在该环境已证不可靠（环境尖峰与目标声重叠）——高/中改固定值
         baseline = baseline * 0.9985 + rms * 0.0015
-        // 灵敏度三档：高=固定 0.0018（嘈杂环境白天测试用，不吃环境账）／中=基线×3／低=基线×5
         let floor: Double
         switch sensitivity {
-        case 0: floor = 0.0018
-        case 2: floor = max(baseline * 5, 0.0015)
-        default: floor = max(baseline * 3, 0.0015)
+        case 0: floor = 0.020   // 高：固定，略高于实测底噪（会收少量环境尖峰）
+        case 2: floor = max(baseline * 4, 0.013)  // 低：自适应（夜间极安静环境）
+        default: floor = 0.030  // 中（默认）：实测最优——环境90%分位在线下，模拟声过线
         }
         let loud = rms > floor
         debugRMS = rms
@@ -195,18 +195,18 @@ final class RecorderEngine: ObservableObject {
 
     private func appendEvent(startSec: TimeInterval, endSec: TimeInterval) {
         let duration = endSec - startSec
-        guard duration >= 0.5 else { return }   // 11-04 v3：0.6→0.5（模仿打鼾单声常不足 0.6s）
+        guard duration >= 0.5 else { return }
         let floor: Double
         switch sensitivity {
-        case 0: floor = 0.0018
-        case 2: floor = max(baseline * 5, 0.0015)
-        default: floor = max(baseline * 3, 0.0015)
+        case 0: floor = 0.020
+        case 2: floor = max(baseline * 4, 0.013)
+        default: floor = 0.030
         }
         let intensity = min(max((eventPeak - floor) / 0.08, 0), 1)
         let avgLow = eventLowAcc / Double(max(eventFrames, 1))
-        // 分类（闭合时完整判定）：打鼾=低频占比高（>0.62）且时长 1.2~20s；其余超门槛事件=磨牙候选
+        // 分类（实测特征：磨牙串低频 0.33-0.55 / 打鼾串 0.67-0.93；模拟打鼾 0.7s→时长窗 0.6 起）
         let kind: NightEvent.Kind
-        if avgLow > 0.62 && duration >= 1.2 && duration <= 20 {
+        if avgLow > 0.62 && duration >= 0.6 && duration <= 20 {
             kind = .snore
         } else {
             kind = .grind
