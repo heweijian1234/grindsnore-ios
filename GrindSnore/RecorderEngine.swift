@@ -288,7 +288,7 @@ final class RecorderEngine: ObservableObject {
                 }
                 idx += frames
             }
-            try file.close()
+            // 注：AVAudioFile.close() 是 iOS18+ API（部署目标16编译不过）——ARC 出作用域自动关闭
             return name
         } catch {
             print("clip export error: \(error)")
